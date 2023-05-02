@@ -1,0 +1,122 @@
+---
+title: "Zápočtová úloha"
+author: Vlasta Michalcová
+date: 02.05.2023
+output: html_document
+---
+
+# 1. Zadání
+
+Úkolem je najít hodnotu parametru *p* tak, aby plocha mezi průsečíky s osou x byla rovna 0 pro funkci:
+
+$$
+f(x) = x^3 + a x^2 - x
+$$
+
+kde $a \in \langle0, 1\rangle$. Úlohu řešíme numericky.
+
+# 2. Řešení
+
+## Definice funkce a její derivace
+```{r}
+f <- function(x, a) x^3 + a * x^2 - x
+fd <- function(x, a) 3 * x^2 + 2 * a * x - 1
+```
+
+## 2.1 Newtonova metoda
+
+Newtonova metoda je iterační metoda pro nalezení kořenů funkce (místa, kde je funkce rovna nule). V každém kroku se aktualizuje přibližná hodnota kořene podle vztahu:
+
+$$
+x_{n+1} = x_n - \frac{f(x_n)}{f'(x_n)}
+$$
+
+kde $x_n$ je aktuální odhad kořene a $f'(x)$ je derivace funkce $f(x)$.
+
+```{r}
+Newton <- function(f, x, a) {
+  for (i in 1:20) {
+    x <- x - (f(x, a) / fd(x, a))
+  }
+  return(x)
+}
+```
+## 2.2 Lichoběžníkové pravidlo
+Lichoběžníkové pravidlo je založeno na aproximaci křivky lomenou čarou, kde každý úsek křivky mezi sousedními body je nahrazen lichoběžníkem. Tímto způsobem se vypočítává plocha pod křivkou.
+
+Lichoběžníkové pravidlo funguje následovně:
+
+Rozdělíme interval integrace na N rovnoměrně rozložených podintervalů.
+Pro každý podinterval vypočteme plochu lichoběžníku, který je určen hodnotami funkce v krajních bodech podintervalu.
+Sečteme plochy všech těchto lichoběžníků.
+
+-f: funkce, jejíž integrál chceme vypočítat,
+-a: levý konec intervalu integrace,
+-b: pravý konec intervalu integrace,
+-n: počet podintervalů,
+-a_coeff: koeficient a, který se předává do funkce f
+
+Funkce trapezoidal_rule nejprve vypočítá krok h, který je roven délce intervalu (b - a) dělené počtem podintervalů n. Poté inicializuje proměnnou s, která reprezentuje součet ploch lichoběžníků, hodnotou 0.5 * (f(a, a_coeff) + f(b, a_coeff))`.
+
+Pro každý bod x v intervalu (a, b) se přičítá hodnota f(x, a_coeff) k proměnné s. Nakonec se vrátí hodnota s * h, což je celková aproximovaná plocha pod křivkou.
+```{r}
+trapezoidal_rule <- function(f, a, b, n, a_coeff) {
+  h <- (b - a) / n
+  s <- 0.5 * (f(a, a_coeff) + f(b, a_coeff))
+  for (i in 1:(n - 1)) {
+    x <- a + i * h
+    s <- s + f(x, a_coeff)
+  }
+  return(s * h)
+}
+```
+## 2.3 Výpočet plochy mezi průsečíky
+Funkce `area_between_intersections` vypočítá plochu mezi průsečíky s osou x pomocí Newtonovy metody pro nalezení kořenů a lichoběžníkové metody pro výpočet plochy.
+```{r}
+area_between_intersections <- function(yp, a) {
+  x0 <- Newton(function(x, a) f(x, a) - yp, -100, a)
+  x1 <- Newton(function(x, a) f(x, a) - yp, 100, a)
+  return(trapezoidal_rule(function(x, a_coeff) f(x, a_coeff) - yp, x0, x1, 1000, a))
+}
+
+```
+## 2.4 Hledání hodnoty y_p
+Funkce `bisection` hledá hodnotu yp, pro kterou je plocha mezi průsečíky s osou x rovna 0. Využívá metodu půlení intervalu (bisekce), která iterativně zmenšuje interval, ve kterém hledáme řešení, na polovinu. Pokračuje, dokud není dosaženo požadované přesnosti.
+```{r}
+bisection <- function(f, a, b, tol = 1e-6) {
+  while ((b - a) / 2 > tol) {
+    c <- (a + b) / 2
+    if (f(c) * f(a) < 0) {
+      b <- c
+    } else {
+      a <- c
+    }
+  }
+  return((a + b) / 2)
+}
+```
+# 3. Závěr - závislost a na yp
+Nyní můžeme spojit všechny části řešení a vypočítat závislost parametru *a* na *yp*:
+```{r}
+n <- 100
+a_seq <- seq(0, 1, length.out = n + 1)
+yp <- numeric(n + 1)
+
+for (i in 1:(n + 1)) {
+  a <- a_seq[i]
+  yp[i] <- bisection(function(x) area_between_intersections(x, a), 0, 0.8)
+}
+
+plot(a_seq, yp, type = "p", xlab = "a", ylab = "yp", main = "Zavislost a na yp")
+```
+
+Výsledkem je graf, který znázorňuje závislost parametru *a* na *yp*. Pomocí těchto výsledků lze určit hodnoty yp, pro které se plocha mezi průsečíky s osou x rovná 0, v závislosti na parametru a.
+
+
+### Kontrola
+```{r}
+cat("Hodnoty yp pro různe hodnoty a:\n")
+for (i in 1:length(yp)) {
+cat(sprintf("a = %.2f, yp = %.6f\n", a_seq[i], yp[i]))
+}
+```
