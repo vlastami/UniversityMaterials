@@ -1,0 +1,68 @@
+CREATE TABLE student(
+	id BIGINT PRIMARY KEY,
+	jmeno VARCHAR(255),
+	datum_narozeni DATE,
+	program_id BIGINT FOREIGN KEY(references program)
+)
+
+CREATE TABLE predmet(
+	id BIGINT PRIMARY KEY,
+	nazev VARCHAR(255),
+	max_pocet_studentu INT,
+	rocnik INT,
+	semestr VARCHAR(2)
+
+CREATE TABLE student_predmet(
+	id BIGINT PRIMARY,
+	student_id BIGINT FOREIGN,
+	predmet_id BIGINT FOREIGN
+)
+
+CREATE TABLE program(
+	id BIGINT PRIMARY,
+	nazev VARCHAR(255),
+	doba_trvani INT
+)
+
+INSERT INTO program(nazev, doba_trvani)
+VALUES('API', 3),
+VALUES('APR', 4)
+
+INSERT INTO student(jmeno, datum_narozeni, program_id)
+VALUES('Jan Novák', 1.1.2000, (SELECT id FROM program WHERE program.nazev = 'API'))
+
+INSERT INTO student(jmeno, datum_narozeni, program_id)
+VALUES('Jiří Novák', 1.1.2005, (SELECT id FROM program WHERE program.nazev = 'APR'))
+
+INSERT INTO predmet(nazev, max_pocet, rocnik, semestr)
+VALUES('Databáze', 30, 2, 'ZS'),
+VALUES('Programování', 25, 3, 'LS')
+
+INSERT INTO student_predmet(student_id, predmet_id)
+VALUES((SELECT id FROM student WHERE student.jmeno = 'Jan Novák'),
+	(SELECT id FROM predmet WHERE predmet.nazev = 'Databáze')
+))
+
+INSERT INTO student_predmet(student_id, predmet_id)
+VALUES((SELECT id FROM student WHERE student.jmeno = 'Jiří Novák'),
+	(SELECT id FROM predmet WHERE predmet.nazev = 'Programování')
+))
+
+
+//všichni studenti a jména předmětů, které studují
+SELECT s.jmeno, p.nazev
+FROM student s 
+LEFT JOIN student_predmet sp ON sp.student_id = s.id
+LEFT JOIN predmet p ON sp.predmet_id = p.id
+
+
+//studijní programy a počty studentů v nich
+SELECT pro.nazev, COUNT(s.id)
+FROM program pro
+LEFT JOIN student s ON s.program_id = pro.id
+GROUP BY s.program_id
+
+//seskupení předmětů podle ročníku studia
+SELECT p.rocnik, STRING_AGG(p.nazev, ',')
+FROM predmet p
+GROUP BY p.rocnik
